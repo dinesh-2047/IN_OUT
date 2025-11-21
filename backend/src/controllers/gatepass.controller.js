@@ -86,6 +86,14 @@ const createGatePassRequest = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Expected return time must be after out time");
   }
 
+  if (!req.user.course) {
+    throw new ApiError(400, "Please update your course information before submitting a gate pass request");
+  }
+
+  if (!req.user.roomNumber) {
+    throw new ApiError(400, "Please update your room number before submitting a gate pass request");
+  }
+
   const initialStage = determineInitialStage(parsedOutTime);
 
   const requestDoc = await GatePassRequest.create({
@@ -96,9 +104,11 @@ const createGatePassRequest = asyncHandler(async (req, res) => {
     expectedReturnTime: parsedReturnTime,
     status: PASS_STATUS.PENDING,
     currentStage: initialStage,
+    studentCourse: req.user.course,
+    studentRoomNumber: req.user.roomNumber,
   });
 
-  const populatedRequest = await requestDoc.populate("student", "fullName username role studentId");
+  const populatedRequest = await requestDoc.populate("student", "fullName username role studentId course roomNumber");
 
   return res
     .status(201)
@@ -106,7 +116,8 @@ const createGatePassRequest = asyncHandler(async (req, res) => {
 });
 
 const listGatePassRequests = asyncHandler(async (req, res) => {
-  const { status, stage, studentId } = req.query || {};
+  const { status, stage, studentId, actedByMe } = req.query || {};
+  const wantsHistoryOnly = actedByMe === "true";
 
   const filters = {};
 
@@ -114,8 +125,16 @@ const listGatePassRequests = asyncHandler(async (req, res) => {
 
   if (req.user.role === "student") {
     filters.student = req.user._id;
-  } else if (assignedStage) {
+  } else if (assignedStage && !wantsHistoryOnly) {
     filters.currentStage = assignedStage;
+
+    if (assignedStage === PASS_STAGES.CLASS_INCHARGE) {
+      if (!req.user.course) {
+        throw new ApiError(400, "Please update your course information to view assigned requests");
+      }
+
+      filters.studentCourse = req.user.course;
+    }
   }
 
   if (status) {
@@ -150,11 +169,20 @@ const listGatePassRequests = asyncHandler(async (req, res) => {
   }
 
   const requests = await GatePassRequest.find(filters)
-    .populate("student", "fullName username role studentId")
+    .populate("student", "fullName username role studentId course roomNumber")
     .populate("gatePassToken")
     .sort({ createdAt: -1 });
 
-  return res.status(200).json(new ApiResponse(200, requests, "Gate pass requests fetched"));
+  let responseData = requests;
+
+  if (wantsHistoryOnly) {
+    const userId = req.user._id.toString();
+    responseData = requests.filter((request) =>
+      (request.history || []).some((entry) => entry.actedBy && entry.actedBy.toString() === userId)
+    );
+  }
+
+  return res.status(200).json(new ApiResponse(200, responseData, "Gate pass requests fetched"));
 });
 
 const getGatePassRequestById = asyncHandler(async (req, res) => {
@@ -165,11 +193,23 @@ const getGatePassRequestById = asyncHandler(async (req, res) => {
   }
 
   const request = await GatePassRequest.findById(id)
-    .populate("student", "fullName username role studentId")
+    .populate("student", "fullName username role studentId course roomNumber")
     .populate("gatePassToken");
 
   if (!request) {
     throw new ApiError(404, "Gate pass request not found");
+  }
+
+  if (["teacher", "class_incharge", "classincharge"].includes(req.user.role)) {
+    if (!req.user.course) {
+      throw new ApiError(400, "Please update your course information to view these requests");
+    }
+
+    const requestCourse = request.studentCourse || request.student?.course;
+
+    if (requestCourse && requestCourse !== req.user.course) {
+      throw new ApiError(403, "You are not assigned to this student's course");
+    }
   }
 
   if (
@@ -205,7 +245,9 @@ const decideGatePassRequest = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid gate pass request id");
   }
 
-  const request = await GatePassRequest.findById(id).populate("gatePassToken");
+  const request = await GatePassRequest.findById(id)
+    .populate("gatePassToken")
+    .populate("student", "fullName username role studentId course roomNumber");
 
   if (!request) {
     throw new ApiError(404, "Gate pass request not found");
@@ -216,6 +258,30 @@ const decideGatePassRequest = asyncHandler(async (req, res) => {
   }
 
   ensureApproverRole(req.user, request.currentStage);
+
+  if (request.currentStage === PASS_STAGES.CLASS_INCHARGE) {
+    if (!req.user.course) {
+      throw new ApiError(400, "Please update your course information to act on these requests");
+    }
+
+    const requestCourse = request.studentCourse || request.student?.course;
+
+    if (!requestCourse) {
+      throw new ApiError(400, "Student course information is missing for this request");
+    }
+
+    if (!request.studentCourse) {
+      request.studentCourse = requestCourse;
+    }
+
+    if (!request.studentRoomNumber && request.student?.roomNumber) {
+      request.studentRoomNumber = request.student.roomNumber;
+    }
+
+    if (requestCourse !== req.user.course) {
+      throw new ApiError(403, "You are not assigned to this student's course");
+    }
+  }
 
   if (normalizedAction === "forward") {
     const nextStage = determineNextStage(request.currentStage);
@@ -242,6 +308,25 @@ const decideGatePassRequest = asyncHandler(async (req, res) => {
       .json(new ApiResponse(200, request, "Gate pass request forwarded"));
   }
 
+  if (normalizedAction === "reject") {
+    request.history.push({
+      stage: request.currentStage,
+      action: PASS_ACTIONS.REJECTED,
+      actedBy: req.user._id,
+      remarks,
+    });
+
+    request.status = PASS_STATUS.REJECTED;
+    request.currentStage = PASS_STAGES.COMPLETED;
+    request.lastActionAt = new Date();
+
+    await request.save();
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, request, "Gate pass request rejected"));
+  }
+
   if (normalizedAction === "approve") {
     if (request.gatePassToken) {
       throw new ApiError(400, "Gate pass token already issued for this request");
@@ -264,7 +349,7 @@ const decideGatePassRequest = asyncHandler(async (req, res) => {
     await request.save();
 
     const populatedRequest = await GatePassRequest.findById(request._id)
-      .populate("student", "fullName username role studentId")
+      .populate("student", "fullName username role studentId course roomNumber")
       .populate("gatePassToken");
 
     return res

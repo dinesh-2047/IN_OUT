@@ -43,6 +43,15 @@ const gatePassRequestSchema = new Schema(
       ref: "User",
       required: true,
     },
+    studentCourse: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    studentRoomNumber: {
+      type: String,
+      trim: true,
+    },
     reason: {
       type: String,
       required: true,

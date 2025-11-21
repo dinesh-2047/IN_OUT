@@ -62,6 +62,15 @@ const userSchema = new mongoose.Schema(
 			type: String,
 			trim: true,
 		},
+		roomNumber: {
+			type: String,
+			trim: true,
+		},
+		course: {
+			type: String,
+			trim: true,
+			uppercase: true,
+		},
 		avatar: {
 			type: String,
 			trim: true,

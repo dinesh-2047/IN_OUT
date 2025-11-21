@@ -18,9 +18,19 @@ const sanitizeUser = (user) => {
 	return rest;
 };
 
-const ensureRoleSpecificFields = (role, { studentId, employeeId }) => {
+const ensureRoleSpecificFields = (role, { studentId, employeeId, course, roomNumber }) => {
+	const courseRequiredRoles = ["student", "teacher", "class_incharge", "classincharge"];
+
 	if (role === "student" && !studentId) {
 		throw new ApiError(400, "Student ID is required for student accounts");
+	}
+
+	if (role === "student" && !roomNumber) {
+		throw new ApiError(400, "Room number is required for student accounts");
+	}
+
+	if (courseRequiredRoles.includes(role) && !course) {
+		throw new ApiError(400, "Course information is required for this role");
 	}
 
 	if (role !== "student" && role !== "security" && !employeeId) {
@@ -40,6 +50,8 @@ const registerUser = asyncHandler(async (req, res) => {
 		employeeId,
 		contactNumber,
 		avatar,
+		course,
+		roomNumber,
 	} = req.body || {};
 
 	if (!fullName || !username || !email || !password || !role) {
@@ -56,7 +68,18 @@ const registerUser = asyncHandler(async (req, res) => {
 		throw new ApiError(400, "Invalid role provided");
 	}
 
-	ensureRoleSpecificFields(normalizedRole, { studentId, employeeId });
+	const trimmedCourse = typeof course === "string" ? course.trim() : "";
+	const normalizedCourse = trimmedCourse ? trimmedCourse.toUpperCase() : undefined;
+
+	const trimmedRoom = typeof roomNumber === "string" ? roomNumber.trim() : "";
+	const normalizedRoomNumber = trimmedRoom || undefined;
+
+	ensureRoleSpecificFields(normalizedRole, {
+		studentId,
+		employeeId,
+		course: normalizedCourse,
+		roomNumber: normalizedRoomNumber,
+	});
 
 	const normalizedEmail = email.toLowerCase();
 	const normalizedUsername = username.toLowerCase();
@@ -79,6 +102,8 @@ const registerUser = asyncHandler(async (req, res) => {
 		employeeId,
 		contactNumber,
 		avatar,
+		course: normalizedCourse,
+		roomNumber: normalizedRoomNumber,
 	});
 
 	const createdUser = await User.findById(user._id).select("-password -refreshToken");
@@ -181,7 +206,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 });
 
 const updateProfile = asyncHandler(async (req, res) => {
-	const allowedFields = ["fullName", "contactNumber", "avatar", "studentId", "employeeId"]; // limit updates
+	const allowedFields = ["fullName", "contactNumber", "avatar", "studentId", "employeeId", "course", "roomNumber"]; // limit updates
 	const updates = {};
 
 	allowedFields.forEach((field) => {
@@ -192,6 +217,27 @@ const updateProfile = asyncHandler(async (req, res) => {
 
 	if (!Object.keys(updates).length) {
 		throw new ApiError(400, "No valid profile fields provided for update");
+	}
+
+	if (typeof updates.course === "string") {
+		const trimmedCourse = updates.course.trim();
+		if (!trimmedCourse) {
+			delete updates.course;
+		} else {
+			updates.course = trimmedCourse.toUpperCase();
+		}
+	}
+
+	if (typeof updates.roomNumber === "string") {
+		const trimmedRoom = updates.roomNumber.trim();
+		if (!trimmedRoom) {
+			if (req.user?.role === "student") {
+				throw new ApiError(400, "Room number cannot be empty for student accounts");
+			}
+			delete updates.roomNumber;
+		} else {
+			updates.roomNumber = trimmedRoom;
+		}
 	}
 
 	const updatedUser = await User.findByIdAndUpdate(req.user?._id, updates, {

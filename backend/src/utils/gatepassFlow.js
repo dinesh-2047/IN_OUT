@@ -5,7 +5,7 @@ import {
   STAGE_ROLE_MAP,
 } from "../constants/gatepass.js";
 
-const WORK_START_HOUR = 8; // 8 AM
+const WORK_START_HOUR = 9; // 9 AM
 const WORK_END_HOUR = 16; // 4 PM
 
 const isWorkingDay = (date) => {
