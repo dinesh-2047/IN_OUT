@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { useTheme } from '../context/ThemeContext'
 
 const initialState = {
   reason: '',
@@ -10,6 +11,14 @@ const initialState = {
 function GatepassForm({ onSubmit, loading }) {
   const [formData, setFormData] = useState(initialState)
   const [formError, setFormError] = useState('')
+  const { isDark } = useTheme()
+
+  const labelClass = `block text-sm font-medium mb-2 ${isDark ? 'text-indigo-100' : 'text-gray-700'}`
+  const inputClass = `w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-gray-400 ${
+    isDark
+      ? 'bg-gray-900/70 border-indigo-500/30 text-white placeholder-indigo-200/60'
+      : 'bg-white border-gray-300 text-gray-900'
+  }`
 
   const minDateTime = useMemo(() => new Date().toISOString().slice(0, 16), [])
 
@@ -64,33 +73,33 @@ function GatepassForm({ onSubmit, loading }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Reason</label>
+        <label className={labelClass}>Reason</label>
         <textarea
           name="reason"
           value={formData.reason}
           onChange={handleChange}
           required
           rows={4}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className={`${inputClass} min-h-[120px] resize-none`}
           placeholder="Enter reason for gate pass"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Destination</label>
+        <label className={labelClass}>Destination</label>
         <input
           name="destination"
           value={formData.destination}
           onChange={handleChange}
           required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className={inputClass}
           placeholder="Enter destination"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Out Time</label>
+          <label className={labelClass}>Out Time</label>
           <input
             type="datetime-local"
             name="outTime"
@@ -98,11 +107,11 @@ function GatepassForm({ onSubmit, loading }) {
             onChange={handleChange}
             required
             min={minDateTime}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className={inputClass}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Expected Return Time</label>
+          <label className={labelClass}>Expected Return Time</label>
           <input
             type="datetime-local"
             name="expectedReturnTime"
@@ -110,7 +119,7 @@ function GatepassForm({ onSubmit, loading }) {
             onChange={handleChange}
             required
             min={formData.outTime || minDateTime}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className={inputClass}
           />
         </div>
       </div>
