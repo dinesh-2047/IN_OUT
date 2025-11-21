@@ -135,7 +135,7 @@ function ApproverDashboard() {
     : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 text-white'
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${pageBgClass}`}>
+    <div className={`min-h-screen overflow-x-hidden transition-colors duration-300 ${pageBgClass}`}>
       <Navbar />
       <div className="flex">
         <Sidebar user={user} />

@@ -164,7 +164,7 @@ function SecurityDashboard() {
     : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 text-white'
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${pageBgClass}`}>
+    <div className={`min-h-screen overflow-x-hidden transition-colors duration-300 ${pageBgClass}`}>
       <Navbar />
       <div className="flex">
         <Sidebar user={user} />
@@ -292,30 +292,55 @@ function SecurityDashboard() {
               {usageRows.length === 0 ? (
                 <p className="text-white/80 text-center py-8">No gate passes scanned today.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-white">
-                    <thead>
-                      <tr className="border-b border-white/30">
-                        <th className="text-left py-3 px-4">Student</th>
-                        <th className="text-left py-3 px-4">Student ID</th>
-                        <th className="text-left py-3 px-4">Scan Time</th>
-                        <th className="text-left py-3 px-4">Direction</th>
-                        <th className="text-left py-3 px-4">Token</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usageRows.map((row) => (
-                        <tr key={row.id} className="border-b border-white/10 hover:bg-white/5 dark:border-gray-800 dark:hover:bg-gray-800/40">
-                          <td className="py-3 px-4">{row.studentName}</td>
-                          <td className="py-3 px-4">{row.studentId}</td>
-                          <td className="py-3 px-4">{formatDateTime(row.usedAt)}</td>
-                          <td className="py-3 px-4 capitalize">{row.type}</td>
-                          <td className="py-3 px-4 text-xs font-mono">{row.tokenValue?.slice(-8) || '--'}</td>
+                <>
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-white">
+                      <thead>
+                        <tr className="border-b border-white/30">
+                          <th className="text-left py-3 px-4">Student</th>
+                          <th className="text-left py-3 px-4">Student ID</th>
+                          <th className="text-left py-3 px-4">Scan Time</th>
+                          <th className="text-left py-3 px-4">Direction</th>
+                          <th className="text-left py-3 px-4">Token</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {usageRows.map((row) => (
+                          <tr key={row.id} className="border-b border-white/10 hover:bg-white/5 dark:border-gray-800 dark:hover:bg-gray-800/40">
+                            <td className="py-3 px-4">{row.studentName}</td>
+                            <td className="py-3 px-4">{row.studentId}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{formatDateTime(row.usedAt)}</td>
+                            <td className="py-3 px-4 capitalize">{row.type}</td>
+                            <td className="py-3 px-4 text-xs font-mono">{row.tokenValue?.slice(-8) || '--'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="md:hidden space-y-3">
+                    {usageRows.map((row) => (
+                      <div
+                        key={`${row.id}-mobile`}
+                        className="bg-white/10 dark:bg-gray-800/70 border border-white/10 dark:border-gray-800 rounded-2xl p-4 text-sm text-white shadow-lg"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div>
+                            <p className="text-base font-semibold">{row.studentName}</p>
+                            <p className="text-xs text-white/70">ID: {row.studentId}</p>
+                          </div>
+                          <span className="px-3 py-1 rounded-full bg-white/15 text-xs capitalize">
+                            {row.type}
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-xs text-white/80">
+                          <p><strong>Scan:</strong> {formatDateTime(row.usedAt)}</p>
+                          <p><strong>Token:</strong> {row.tokenValue?.slice(-8) || '--'}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </div>

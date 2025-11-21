@@ -99,7 +99,7 @@ function StudentDashboard() {
   )
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${pageBgClass}`}>
+    <div className={`min-h-screen overflow-x-hidden transition-colors duration-300 ${pageBgClass}`}>
       <Navbar />
       <div className="flex">
         <Sidebar user={user} />

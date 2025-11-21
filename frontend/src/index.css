@@ -70,6 +70,12 @@ html {
   scroll-behavior: smooth;
 }
 
+html,
+body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 /* Smooth transitions for all interactive elements */
 a, button {
   transition: all 0.3s ease;
