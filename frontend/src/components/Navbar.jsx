@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate, NavLink } from 'react-router-dom'
+import { useNavigate, NavLink, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import NotificationBell from './NotificationBell'
 import { useTheme } from '../context/ThemeContext'
@@ -11,6 +11,7 @@ function Navbar() {
   const navigate = useNavigate()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState(null)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const dropdownRef = useRef(null)
 
   // Close dropdown when clicking outside
@@ -24,6 +25,17 @@ function Navbar() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (showMobileMenu) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [showMobileMenu])
 
   const handleLogout = () => {
     logout()
@@ -153,6 +165,8 @@ function Navbar() {
   const handleDropdownToggle = (dropdownName) => {
     setActiveDropdown(activeDropdown === dropdownName ? null : dropdownName)
   }
+
+  const closeMobileMenu = () => setShowMobileMenu(false)
 
   // Mega Dropdown Component
   const MegaDropdown = ({ menuKey, data }) => (
@@ -306,7 +320,8 @@ function Navbar() {
   )
 
   return (
-    <nav
+    <>
+      <nav
       className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-colors ${
         isDark
           ? 'bg-black/50 border-gray-800'
@@ -333,6 +348,16 @@ function Navbar() {
           <NavLinks />
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className={`lg:hidden p-2 rounded-full border ${isDark ? 'border-gray-700 text-white' : 'border-gray-200 text-gray-700'}`}
+              onClick={() => setShowMobileMenu(true)}
+              aria-label="Open navigation menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h12" />
+              </svg>
+            </button>
             {user ? (
               <>
                 <NotificationBell user={user} />
@@ -468,6 +493,80 @@ function Navbar() {
         </div>
       </div>
     </nav>
+
+    <AnimatePresence>
+      {showMobileMenu && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 lg:hidden"
+        >
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={closeMobileMenu}
+            role="presentation"
+          />
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+            className={`absolute right-0 top-0 h-full w-80 max-w-full p-6 overflow-y-auto border-l backdrop-blur-xl ${
+              isDark ? 'bg-gray-900/90 border-gray-800 text-white' : 'bg-white/90 border-gray-200 text-gray-900'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold">Navigate</h2>
+              <button
+                type="button"
+                onClick={closeMobileMenu}
+                className={`p-2 rounded-full border text-lg ${
+                  isDark ? 'border-gray-700 text-white' : 'border-gray-200 text-gray-700'
+                }`}
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-6">
+              <Link
+                to="/"
+                onClick={closeMobileMenu}
+                className={`block px-4 py-3 rounded-2xl font-semibold ${
+                  isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                Home
+              </Link>
+              {Object.entries(megaMenuData).map(([key, section]) => (
+                <div key={key} className="space-y-3">
+                  <p className="text-xs uppercase tracking-widest opacity-70">{section.title}</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {section.columns.flatMap((column) => column.items).map((item) => (
+                      <Link
+                        key={`${key}-${item.name}`}
+                        to={`/${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        onClick={closeMobileMenu}
+                        className={`rounded-xl px-4 py-3 flex items-center gap-3 border ${
+                          isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <span className="text-xl">{item.icon}</span>
+                        <div>
+                          <p className="text-sm font-semibold">{item.name}</p>
+                          <p className="text-xs opacity-70">{item.description}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   )
 }
 

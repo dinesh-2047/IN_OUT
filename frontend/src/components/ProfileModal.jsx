@@ -1,17 +1,33 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import axios from 'axios'
+import apiClient from '../lib/apiClient'
 
 function ProfileModal({ isOpen, onClose }) {
-  const { user } = useAuth()
+  const { user, refresh } = useAuth()
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    fullName: user?.fullName || '',
     email: user?.email || '',
-    studentId: user?.studentId || ''
+    studentId: user?.studentId || '',
+    employeeId: user?.employeeId || '',
+    contactNumber: user?.contactNumber || '',
+    course: user?.course || '',
+    roomNumber: user?.roomNumber || ''
   })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    setFormData({
+      fullName: user?.fullName || '',
+      email: user?.email || '',
+      studentId: user?.studentId || '',
+      employeeId: user?.employeeId || '',
+      contactNumber: user?.contactNumber || '',
+      course: user?.course || '',
+      roomNumber: user?.roomNumber || ''
+    })
+  }, [user])
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -23,13 +39,29 @@ function ProfileModal({ isOpen, onClose }) {
     setMessage('')
 
     try {
-      // In a real app, you'd update the user via API
+      const payload = {}
+      const updatableFields = ['fullName', 'studentId', 'employeeId', 'contactNumber', 'course', 'roomNumber']
+
+      updatableFields.forEach((field) => {
+        if (typeof formData[field] !== 'undefined' && formData[field] !== user?.[field]) {
+          payload[field] = formData[field]
+        }
+      })
+
+      if (!Object.keys(payload).length) {
+        setMessage('No changes to update')
+        setLoading(false)
+        return
+      }
+
+      await apiClient.patch('/users/profile', payload)
+      await refresh()
       setMessage('Profile updated successfully!')
       setTimeout(() => {
         onClose()
       }, 1500)
     } catch (error) {
-      setMessage('Failed to update profile')
+      setMessage(error.response?.data?.message || 'Failed to update profile')
     } finally {
       setLoading(false)
     }
@@ -60,11 +92,11 @@ function ProfileModal({ isOpen, onClose }) {
             </div>
 
             {/* Profile Photo */}
-            <div className="flex justify-center mb-6">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
+              <div className="flex justify-center mb-6">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
+                  {user?.fullName?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || 'U'}
+                </div>
               </div>
-            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -73,8 +105,8 @@ function ProfileModal({ isOpen, onClose }) {
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  name="fullName"
+                  value={formData.fullName}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
                 />
@@ -88,8 +120,8 @@ function ProfileModal({ isOpen, onClose }) {
                   type="email"
                   name="email"
                   value={formData.email}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                 />
               </div>
 
@@ -107,6 +139,64 @@ function ProfileModal({ isOpen, onClose }) {
                   />
                 </div>
               )}
+
+              {user?.role === 'student' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Room Number
+                  </label>
+                  <input
+                    type="text"
+                    name="roomNumber"
+                    value={formData.roomNumber}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              )}
+
+              {user && user.role !== 'student' && user.role !== 'security' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Employee ID
+                  </label>
+                  <input
+                    type="text"
+                    name="employeeId"
+                    value={formData.employeeId}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              )}
+
+              {['student', 'teacher', 'class_incharge', 'classincharge'].includes(user?.role) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Course / Section
+                  </label>
+                  <input
+                    type="text"
+                    name="course"
+                    value={formData.course}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Contact Number
+                </label>
+                <input
+                  type="tel"
+                  name="contactNumber"
+                  value={formData.contactNumber}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
 
               {message && (
                 <div className={`p-3 rounded-lg text-sm ${

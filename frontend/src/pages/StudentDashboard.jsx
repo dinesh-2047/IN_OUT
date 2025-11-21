@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import apiClient from '../lib/apiClient'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
@@ -22,6 +23,7 @@ function formatDateTime(value, options) {
 
 function StudentDashboard() {
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const [gatepasses, setGatepasses] = useState([])
   const [isFetching, setIsFetching] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -30,6 +32,12 @@ function StudentDashboard() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showWardenModal, setShowWardenModal] = useState(false)
   const [selectedPassId, setSelectedPassId] = useState(null)
+  const missingCourse = user?.role === 'student' && !user?.course
+  const missingRoom = user?.role === 'student' && !user?.roomNumber
+  const missingInfo = missingCourse || missingRoom
+  const pageBgClass = isDark
+    ? 'bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-indigo-50'
+    : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 text-white'
 
   useEffect(() => {
     fetchGatepasses()
@@ -91,7 +99,7 @@ function StudentDashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600">
+    <div className={`min-h-screen transition-colors duration-300 ${pageBgClass}`}>
       <Navbar />
       <div className="flex">
         <Sidebar user={user} />
@@ -106,14 +114,30 @@ function StudentDashboard() {
 
             <AnnouncementsBanner />
 
+            {missingInfo && (
+              <div className="mb-4 p-4 bg-yellow-500/20 dark:bg-yellow-500/10 border border-yellow-300/50 dark:border-yellow-500/40 text-yellow-100 dark:text-yellow-200 rounded-xl text-sm space-y-1">
+                <p>Please update the missing details in your profile before applying for a gate pass:</p>
+                <ul className="list-disc list-inside text-yellow-50">
+                  {missingCourse && <li>Course information</li>}
+                  {missingRoom && <li>Room number</li>}
+                </ul>
+              </div>
+            )}
+
             <div className="mb-6 flex flex-wrap gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setShowForm((prev) => !prev)}
-                className="bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-xl font-semibold hover:bg-white/30 transition-all border border-white/30 shadow-lg"
+                onClick={() => {
+                  if (missingInfo) return
+                  setShowForm((prev) => !prev)
+                }}
+                disabled={missingInfo}
+                className={`bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-xl font-semibold transition-all border border-white/30 shadow-lg ${
+                  missingInfo ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/30'
+                }`}
               >
-                {showForm ? 'Cancel Application' : '+ Apply for Gate Pass'}
+                {missingInfo ? 'Complete Profile to Apply' : showForm ? 'Cancel Application' : '+ Apply for Gate Pass'}
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -126,7 +150,7 @@ function StudentDashboard() {
             </div>
 
             {error && (
-              <div className="mb-4 p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/50 text-red-100 rounded-xl text-sm">
+              <div className="mb-4 p-4 bg-red-500/20 dark:bg-red-900/30 backdrop-blur-sm border border-red-400/50 dark:border-red-700 text-red-100 dark:text-red-200 rounded-xl text-sm">
                 {error}
               </div>
             )}
@@ -135,7 +159,7 @@ function StudentDashboard() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6 md:mb-8 bg-white/10 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 md:p-6"
+                className="mb-6 md:mb-8 bg-white/10 dark:bg-gray-900/60 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 dark:border-gray-800/70 p-4 md:p-6"
               >
                 <h2 className="text-lg md:text-xl font-semibold text-white mb-4 drop-shadow-md">
                   New Gate Pass Application
@@ -144,7 +168,7 @@ function StudentDashboard() {
               </motion.div>
             )}
 
-            <div className="bg-white/10 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 md:p-6 mb-6">
+            <div className="bg-white/10 dark:bg-gray-900/60 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 dark:border-gray-800/70 p-4 md:p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg md:text-xl font-semibold text-white drop-shadow-md">My Gate Passes</h2>
                 {isFetching && <span className="text-xs text-white/70">Refreshing...</span>}
@@ -181,8 +205,8 @@ function StudentDashboard() {
                         animate={{ opacity: 1, scale: 1 }}
                         whileHover={{ scale: 1.02 }}
                         onClick={() => setSelectedPassId(isSelected ? null : gatepass._id)}
-                        className={`bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl p-4 md:p-5 cursor-pointer hover:bg-white/30 transition-all ${
-                          isSelected ? 'ring-2 ring-white/70' : ''
+                        className={`bg-white/20 dark:bg-gray-800/70 backdrop-blur-sm border border-white/30 dark:border-gray-700 rounded-xl p-4 md:p-5 cursor-pointer hover:bg-white/30 dark:hover:bg-gray-800 transition-all ${
+                          isSelected ? 'ring-2 ring-white/70 dark:ring-gray-500' : ''
                         }`}
                       >
                         <div className="flex justify-between items-start mb-3">
@@ -218,7 +242,7 @@ function StudentDashboard() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white/10 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 md:p-6 mb-6"
+                className="bg-white/10 dark:bg-gray-900/60 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 dark:border-gray-800/70 p-4 md:p-6 mb-6"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-white drop-shadow-md">
@@ -236,7 +260,7 @@ function StudentDashboard() {
               </motion.div>
             )}
 
-            <div className="bg-white/10 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 md:p-6 overflow-x-auto">
+            <div className="bg-white/10 dark:bg-gray-900/60 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 dark:border-gray-800/70 p-4 md:p-6 overflow-x-auto">
               <h2 className="text-lg md:text-xl font-semibold text-white mb-4 drop-shadow-md">Pass History</h2>
               {gatepasses.length === 0 ? (
                 <p className="text-white/80 text-center py-8">No pass history available</p>

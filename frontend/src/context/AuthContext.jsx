@@ -77,6 +77,8 @@ export function AuthProvider({ children }) {
         studentId: userData.studentId,
         employeeId: userData.employeeId,
         contactNumber: userData.contactNumber,
+        course: userData.course,
+        roomNumber: userData.roomNumber,
       }
 
       await apiClient.post('/users/register', payload)

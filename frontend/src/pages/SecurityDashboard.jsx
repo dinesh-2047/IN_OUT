@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import apiClient from '../lib/apiClient'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
@@ -19,6 +20,7 @@ const formatDateTime = (value) => {
 
 function SecurityDashboard() {
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const [scanResult, setScanResult] = useState(null)
   const [isScanning, setIsScanning] = useState(false)
   const [scanError, setScanError] = useState('')
@@ -155,9 +157,14 @@ function SecurityDashboard() {
   const resultRequest = scanResult?.request
   const remainingUses = scanResult?.remainingUses
   const canShowScanner = !scanResult && !isScanning
+  const resultRoom = resultRequest?.studentRoomNumber || resultStudent.roomNumber
+
+  const pageBgClass = isDark
+    ? 'bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-indigo-50'
+    : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 text-white'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600">
+    <div className={`min-h-screen transition-colors duration-300 ${pageBgClass}`}>
       <Navbar />
       <div className="flex">
         <Sidebar user={user} />
@@ -168,7 +175,7 @@ function SecurityDashboard() {
               <p className="mt-2 text-sm md:text-base text-white/90">Welcome, {user?.fullName || user?.username}</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 md:p-6 lg:p-8 mb-6">
+            <div className="bg-white/10 dark:bg-gray-900/60 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 dark:border-gray-800/70 p-4 md:p-6 lg:p-8 mb-6">
               <h2 className="text-lg md:text-xl lg:text-2xl font-semibold text-white mb-6 text-center drop-shadow-md">
                 QR Code Scanner
               </h2>
@@ -185,7 +192,7 @@ function SecurityDashboard() {
               )}
 
               {scanError && (
-                <div className="mb-4 p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/50 text-red-100 rounded-xl text-sm">
+                <div className="mb-4 p-4 bg-red-500/20 dark:bg-red-900/30 backdrop-blur-sm border border-red-400/50 dark:border-red-700 text-red-100 dark:text-red-200 rounded-xl text-sm">
                   {scanError}
                 </div>
               )}
@@ -194,8 +201,8 @@ function SecurityDashboard() {
                 <div
                   className={`p-6 md:p-8 rounded-lg animate-fadeIn ${
                     scanResult.valid
-                      ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-500 shadow-lg'
-                      : 'bg-red-50 border-2 border-red-500'
+                      ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-500 shadow-lg dark:from-emerald-950 dark:to-green-900 dark:border-emerald-700 dark:text-emerald-100'
+                      : 'bg-red-50 border-2 border-red-500 dark:bg-red-950 dark:border-red-700 dark:text-red-100'
                   }`}
                 >
                   <div className="text-center mb-6">
@@ -220,21 +227,22 @@ function SecurityDashboard() {
 
                   {scanResult.valid && resultRequest && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-6">
-                      <div className="bg-white p-4 md:p-5 rounded-lg shadow-md border border-gray-200">
+                      <div className="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
                         <h4 className="font-bold text-primary-600 mb-3 text-lg flex items-center gap-2">
                           <span>👤</span> Student Information
                         </h4>
-                        <div className="space-y-2 text-sm md:text-base text-gray-700">
+                        <div className="space-y-2 text-sm md:text-base text-gray-700 dark:text-gray-100">
                           <p><strong>Name:</strong> {resultStudent.fullName || resultStudent.username || 'Unknown'}</p>
                           <p><strong>Student ID:</strong> {resultStudent.studentId || '--'}</p>
+                          <p><strong>Room:</strong> {resultRoom || '--'}</p>
                         </div>
                       </div>
 
-                      <div className="bg-white p-4 md:p-5 rounded-lg shadow-md border border-gray-200">
+                      <div className="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
                         <h4 className="font-bold text-primary-600 mb-3 text-lg flex items-center gap-2">
                           <span>📋</span> Gate pass Details
                         </h4>
-                        <div className="space-y-2 text-sm md:text-base text-gray-700">
+                        <div className="space-y-2 text-sm md:text-base text-gray-700 dark:text-gray-100">
                           <p><strong>Reason:</strong> {resultRequest.reason}</p>
                           <p><strong>Destination:</strong> {resultRequest.destination}</p>
                           <p><strong>Out:</strong> {formatDateTime(resultRequest.outTime)}</p>
@@ -243,9 +251,9 @@ function SecurityDashboard() {
                         </div>
                       </div>
 
-                      <div className="bg-white p-4 md:p-5 rounded-lg shadow-md border border-gray-200 md:col-span-2">
+                      <div className="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 md:col-span-2">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                          <div className="text-sm md:text-base text-gray-700 space-y-1">
+                          <div className="text-sm md:text-base text-gray-700 dark:text-gray-100 space-y-1">
                             <p><strong>Token:</strong> {resultToken?.value || 'Unknown'}</p>
                             <p><strong>Status:</strong> {resultToken?.status || 'active'}</p>
                             <p><strong>Uses:</strong> {resultToken?.usesCount || 0} / {resultToken?.usesAllowed || 2}</p>
@@ -267,7 +275,7 @@ function SecurityDashboard() {
               )}
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 md:p-6 mt-6">
+            <div className="bg-white/10 dark:bg-gray-900/60 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 dark:border-gray-800/70 p-4 md:p-6 mt-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg md:text-xl lg:text-2xl font-semibold text-white drop-shadow-md">
                   Today&apos;s Gate Pass Activity
@@ -276,7 +284,7 @@ function SecurityDashboard() {
               </div>
 
               {usageError && (
-                <div className="mb-4 p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/50 text-red-100 rounded-xl text-sm">
+                <div className="mb-4 p-4 bg-red-500/20 dark:bg-red-900/30 backdrop-blur-sm border border-red-400/50 dark:border-red-700 text-red-100 dark:text-red-200 rounded-xl text-sm">
                   {usageError}
                 </div>
               )}
@@ -297,7 +305,7 @@ function SecurityDashboard() {
                     </thead>
                     <tbody>
                       {usageRows.map((row) => (
-                        <tr key={row.id} className="border-b border-white/10 hover:bg-white/5">
+                        <tr key={row.id} className="border-b border-white/10 hover:bg-white/5 dark:border-gray-800 dark:hover:bg-gray-800/40">
                           <td className="py-3 px-4">{row.studentName}</td>
                           <td className="py-3 px-4">{row.studentId}</td>
                           <td className="py-3 px-4">{formatDateTime(row.usedAt)}</td>

@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 
 function Scanner({ onScan, onError }) {
   const [scanning, setScanning] = useState(false)
   const [initializing, setInitializing] = useState(false)
+  const [qrboxSize, setQrboxSize] = useState(280)
   const html5QrcodeRef = useRef(null)
   const scannerContainerRef = useRef(null)
   const scannerIdRef = useRef(null)
@@ -11,6 +12,13 @@ function Scanner({ onScan, onError }) {
   if (!scannerIdRef.current) {
     scannerIdRef.current = `qr-reader-${Math.random().toString(36).slice(2, 10)}`
   }
+
+  const updateQrboxSize = useCallback(() => {
+    if (!scannerContainerRef.current) return
+    const containerWidth = scannerContainerRef.current.getBoundingClientRect().width || 320
+    const nextSize = Math.max(200, Math.min(420, Math.round(containerWidth * 0.85)))
+    setQrboxSize(nextSize)
+  }, [])
 
   const startScanning = async () => {
     if (html5QrcodeRef.current) {
@@ -75,7 +83,7 @@ function Scanner({ onScan, onError }) {
         cameraId,
         {
           fps: 10,
-          qrbox: { width: 300, height: 300 },
+          qrbox: { width: qrboxSize, height: qrboxSize },
           aspectRatio: 1.0,
           disableFlip: false
         },
@@ -140,12 +148,32 @@ function Scanner({ onScan, onError }) {
   }
 
   useEffect(() => {
+    updateQrboxSize()
+
+    let resizeObserver
+    const hasWindow = typeof window !== 'undefined'
+    if (hasWindow && window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(() => updateQrboxSize())
+      if (scannerContainerRef.current) {
+        resizeObserver.observe(scannerContainerRef.current)
+      }
+    } else if (hasWindow) {
+      window.addEventListener('resize', updateQrboxSize)
+      window.addEventListener('orientationchange', updateQrboxSize)
+    }
+
     return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      } else if (hasWindow) {
+        window.removeEventListener('resize', updateQrboxSize)
+        window.removeEventListener('orientationchange', updateQrboxSize)
+      }
       if (html5QrcodeRef.current) {
         stopScanning()
       }
     }
-  }, [])
+  }, [updateQrboxSize])
 
   return (
     <div className="w-full max-w-2xl mx-auto" ref={scannerContainerRef}>
@@ -172,7 +200,8 @@ function Scanner({ onScan, onError }) {
       <div className={`${scanning ? 'space-y-4' : 'hidden'}`}>
         <div
           id={scannerIdRef.current}
-          className="rounded-xl overflow-hidden bg-black min-h-[300px] md:min-h-[400px] w-full border-4 border-white/50 shadow-2xl"
+          className="rounded-xl overflow-hidden bg-black w-full border-4 border-white/50 shadow-2xl aspect-square max-h-[480px]"
+          style={{ minHeight: `${Math.max(200, qrboxSize)}px` }}
         />
         <p className="text-center text-white font-medium text-lg">Point camera at QR code</p>
         <button

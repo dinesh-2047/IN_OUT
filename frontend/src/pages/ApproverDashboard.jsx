@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import apiClient from '../lib/apiClient'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
@@ -13,6 +14,16 @@ import {
   PASS_STATUS,
   PASS_STAGES,
 } from '../constants/gatepass'
+
+const normalizeId = (value) => {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'object') {
+    if (value._id) return value._id
+    if (typeof value.toString === 'function') return value.toString()
+  }
+  return ''
+}
 
 function formatDate(date) {
   if (!date) return '--'
@@ -34,6 +45,7 @@ function formatTime(date) {
 
 function ApproverDashboard() {
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const [gatepasses, setGatepasses] = useState([])
   const [filter, setFilter] = useState('pending')
   const [loading, setLoading] = useState(false)
@@ -41,6 +53,8 @@ function ApproverDashboard() {
   const [remarks, setRemarks] = useState({})
 
   const approverStage = useMemo(() => ROLE_TO_STAGE[user?.role] ?? null, [user?.role])
+  const isHistoryView = filter === 'history'
+  const currentUserId = normalizeId(user?._id || user?.id)
 
   const fetchGatepasses = useCallback(async () => {
     if (!user) return
@@ -54,7 +68,11 @@ function ApproverDashboard() {
         params.status = PASS_STATUS.PENDING
       }
 
-      if (approverStage) {
+      if (filter === 'history') {
+        params.actedByMe = true
+      }
+
+      if (approverStage && filter !== 'history') {
         params.stage = approverStage
       }
 
@@ -112,8 +130,12 @@ function ApproverDashboard() {
     return nextStage !== PASS_STAGES.COMPLETED
   }
 
+  const pageBgClass = isDark
+    ? 'bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-indigo-50'
+    : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 text-white'
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600">
+    <div className={`min-h-screen transition-colors duration-300 ${pageBgClass}`}>
       <Navbar />
       <div className="flex">
         <Sidebar user={user} />
@@ -137,7 +159,7 @@ function ApproverDashboard() {
               )}
             </div>
 
-            <div className="mb-4 md:mb-6 flex flex-wrap gap-2 sm:gap-4 bg-white/10 backdrop-blur-md rounded-xl shadow-xl border border-white/20 p-3 md:p-4">
+            <div className="mb-4 md:mb-6 flex flex-wrap gap-2 sm:gap-4 bg-white/10 dark:bg-gray-900/60 backdrop-blur-md rounded-xl shadow-xl border border-white/20 dark:border-gray-800/70 p-3 md:p-4">
               <button
                 onClick={() => setFilter('pending')}
                 className={`px-3 sm:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base flex-1 sm:flex-initial ${
@@ -158,15 +180,33 @@ function ApproverDashboard() {
               >
                 All Requests
               </button>
+              <button
+                onClick={() => setFilter('history')}
+                className={`px-3 sm:px-6 py-2 rounded-lg font-medium transition-all text-sm md:text-base flex-1 sm:flex-initial ${
+                  filter === 'history'
+                    ? 'bg-white/30 text-white shadow-lg'
+                    : 'bg-white/10 text-white/80 hover:bg-white/20'
+                }`}
+              >
+                My History
+              </button>
             </div>
+
+            {isHistoryView && (
+              <div className="mb-4 text-sm text-white/80 bg-white/10 dark:bg-gray-900/60 rounded-xl border border-white/20 dark:border-gray-800/70 p-3">
+                Showing gate passes where you have already taken an action.
+              </div>
+            )}
 
             {loading ? (
               <div className="text-center py-12 text-white/80">Loading requests...</div>
             ) : gatepasses.length === 0 ? (
-              <div className="text-center py-12 text-white/80 bg-white/10 backdrop-blur-md rounded-xl shadow-xl border border-white/20">
+              <div className="text-center py-12 text-white/80 bg-white/10 dark:bg-gray-900/60 backdrop-blur-md rounded-xl shadow-xl border border-white/20 dark:border-gray-800/70">
                 {filter === 'pending'
                   ? 'No pending gate pass applications at the moment.'
-                  : 'No gate pass applications found.'}
+                  : filter === 'history'
+                    ? 'No past decisions found yet.'
+                    : 'No gate pass applications found.'}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
@@ -176,6 +216,14 @@ function ApproverDashboard() {
                   const isPending = request.status === PASS_STATUS.PENDING
                   const canAct = canActOnRequest(request)
                   const canForward = canForwardRequest(request)
+                  const courseLabel = request.studentCourse || student.course
+                  const roomLabel = student.roomNumber || request.studentRoomNumber
+                  const myDecision = (request.history || []).find(
+                    (entry) => normalizeId(entry.actedBy) === currentUserId
+                  )
+                  const myDecisionLabel = myDecision?.action
+                    ? myDecision.action.charAt(0).toUpperCase() + myDecision.action.slice(1)
+                    : ''
 
                   return (
                     <motion.div
@@ -183,7 +231,7 @@ function ApproverDashboard() {
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       whileHover={{ scale: 1.02 }}
-                      className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 hover:bg-white/20 transition-all shadow-xl"
+                      className="bg-white/10 dark:bg-gray-900/60 backdrop-blur-md border border-white/20 dark:border-gray-800/70 rounded-xl p-6 hover:bg-white/20 dark:hover:bg-gray-900 transition-all shadow-xl"
                     >
                       <div className="flex justify-between items-start mb-4">
                         <StatusBadge status={request.status} currentStage={request.currentStage} />
@@ -191,17 +239,34 @@ function ApproverDashboard() {
                       </div>
 
                       <div className="space-y-3 text-sm text-white">
-                        <div className="bg-white/10 p-3 rounded-lg">
+                        <div className="bg-white/10 dark:bg-gray-800/60 p-3 rounded-lg">
                           <h3 className="font-semibold text-white mb-1">
                             {student.fullName || student.username || 'Unknown Student'}
                           </h3>
                           {student.studentId && (
                             <p className="text-xs text-white/80">Student ID: {student.studentId}</p>
                           )}
+                          {courseLabel && (
+                            <p className="text-xs text-white/80">Course: {courseLabel}</p>
+                          )}
+                          {roomLabel && (
+                            <p className="text-xs text-white/80">Room: {roomLabel}</p>
+                          )}
                           {student.email && (
                             <p className="text-xs text-white/75 truncate">Email: {student.email}</p>
                           )}
                         </div>
+                        {myDecision && (
+                          <div className="bg-white/10 dark:bg-gray-800/60 border border-white/20 dark:border-gray-700 rounded-lg mt-3 p-3 text-xs text-white/80 space-y-1">
+                            <p className="font-semibold text-white">Your Decision</p>
+                            <p>Stage: {STAGE_LABELS[myDecision.stage] || myDecision.stage}</p>
+                            <p>Action: {myDecisionLabel}</p>
+                            <p>
+                              When: {formatDate(myDecision.actedAt)} {formatTime(myDecision.actedAt)}
+                            </p>
+                            {myDecision.remarks && <p>Remarks: {myDecision.remarks}</p>}
+                          </div>
+                        )}
                         <p><strong>Reason:</strong> {request.reason}</p>
                         <p><strong>Destination:</strong> {request.destination}</p>
                         <p>
@@ -247,7 +312,7 @@ function ApproverDashboard() {
                             placeholder="Add optional remarks"
                             value={remarks[request._id] || ''}
                             onChange={(event) => updateRemark(request._id, event.target.value)}
-                            className="w-full px-3 py-2 text-sm rounded-lg border border-white/30 bg-white/10 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/40"
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-white/30 dark:border-gray-700 bg-white/10 dark:bg-gray-800/60 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/40"
                           />
                         </div>
                       )}
@@ -271,6 +336,13 @@ function ApproverDashboard() {
                                 {actionLoading === request._id ? 'Processing...' : `Forward to ${STAGE_LABELS[nextStage]}`}
                               </button>
                             )}
+                            <button
+                              onClick={() => handleAction(request._id, 'reject')}
+                              disabled={actionLoading === request._id}
+                              className="flex-1 bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg"
+                            >
+                              {actionLoading === request._id ? 'Processing...' : 'Reject'}
+                            </button>
                           </div>
                         ) : (
                           <p className="text-xs text-white/70">

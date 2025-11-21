@@ -21,7 +21,9 @@ function Auth() {
      role: 'student',
      studentId: '',
      employeeId: '',
-     contactNumber: ''
+        contactNumber: '',
+        course: '',
+      roomNumber: '',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -56,8 +58,13 @@ function Auth() {
       else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters'
       if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match'
       if (formData.role === 'student' && !formData.studentId) newErrors.studentId = 'Student ID is required'
+      if (formData.role === 'student' && !formData.roomNumber) newErrors.roomNumber = 'Room number is required'
       if (formData.role !== 'student' && formData.role !== 'security' && !formData.employeeId) {
         newErrors.employeeId = 'Employee ID is required'
+      }
+      const courseRequiredRoles = ['student', 'teacher', 'class_incharge', 'classincharge']
+      if (courseRequiredRoles.includes(formData.role) && !formData.course) {
+        newErrors.course = 'Course is required'
       }
     }
     
@@ -100,6 +107,8 @@ function Auth() {
           studentId: formData.studentId || undefined,
           employeeId: formData.employeeId || undefined,
           contactNumber: formData.contactNumber || undefined,
+          course: formData.course || undefined,
+          roomNumber: formData.roomNumber || undefined,
         })
       }
 
@@ -137,7 +146,9 @@ function Auth() {
       role: 'student',
       studentId: '',
       employeeId: '',
-      contactNumber: ''
+      contactNumber: '',
+      course: '',
+      roomNumber: '',
     })
   }
 
@@ -667,6 +678,85 @@ function Auth() {
                             </div>
                             {errors.studentId && (
                               <p className="mt-1 text-sm text-red-500">{errors.studentId}</p>
+                            )}
+                          </motion.div>
+                        )}
+
+                        {formData.role === 'student' && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                          >
+                            <label className={`block text-sm font-medium mb-2 ${
+                              isDark ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
+                              Room Number
+                            </label>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7l9-4 9 4-9 4-9-4z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10l-9 4-9-4" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 14l9 4 9-4" />
+                                </svg>
+                              </div>
+                              <input
+                                type="text"
+                                name="roomNumber"
+                                value={formData.roomNumber}
+                                onChange={handleChange}
+                                className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 transition-all ${
+                                  errors.roomNumber
+                                    ? 'border-red-500 focus:border-red-500'
+                                    : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'
+                                } ${
+                                  isDark ? 'bg-slate-700 text-white placeholder-gray-400' : 'bg-gray-50 text-gray-900'
+                                } focus:ring-2 focus:ring-blue-500/20`}
+                                placeholder="e.g., A-203"
+                              />
+                            </div>
+                            {errors.roomNumber && (
+                              <p className="mt-1 text-sm text-red-500">{errors.roomNumber}</p>
+                            )}
+                          </motion.div>
+                        )}
+
+                        {['student', 'teacher', 'class_incharge', 'classincharge'].includes(formData.role) && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                          >
+                            <label className={`block text-sm font-medium mb-2 ${
+                              isDark ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
+                              Course / Section
+                            </label>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422A12.083 12.083 0 0112 21.5 12.083 12.083 0 015.84 10.578L12 14z" />
+                                </svg>
+                              </div>
+                              <input
+                                type="text"
+                                name="course"
+                                value={formData.course}
+                                onChange={handleChange}
+                                className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 transition-all ${
+                                  errors.course
+                                    ? 'border-red-500 focus:border-red-500'
+                                    : 'border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400'
+                                } ${
+                                  isDark ? 'bg-slate-700 text-white placeholder-gray-400' : 'bg-gray-50 text-gray-900'
+                                } focus:ring-2 focus:ring-blue-500/20`}
+                                placeholder="e.g., CSE-A"
+                              />
+                            </div>
+                            {errors.course && (
+                              <p className="mt-1 text-sm text-red-500">{errors.course}</p>
                             )}
                           </motion.div>
                         )}
